@@ -1,9 +1,9 @@
 from setuptools import setup
 
 setup(
-    name='tcgp',
+    name='pcgp',
     version='0.0.1',
-    packages=['tcgp'],
+    packages=['pcgp'],
     install_requires=[
         'torch',
       ],
