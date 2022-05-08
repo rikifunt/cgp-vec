@@ -3,9 +3,12 @@ from typing import Any, Union, Tuple, List, Dict, Optional, Iterable, Callable
 
 import torch
 
+
 #TODO for all selection functions also support returning indices and/or weights/scores/etc.
 
 # assumes weights are positive and sum to 1 along rows
+# optimized for when there is only 1 item in each row: simply returns it
+# n_rounds times
 def roulette_wheel(
         n_rounds,
         items: torch.Tensor,
@@ -20,10 +23,11 @@ def roulette_wheel(
         columns = torch.zeros_like(rows)
         return items[rows, columns]
     if normalize_weights:
-        weights = weights / weights.sum(dim=1, keepdim=True)
-        #TODO issue a warning of degenerate distr instead
-        #TODO also check for inf
-        #weights[weights != weights] = 1. / weights.size(1)
+        sums = weights.sum(dim=1, keepdim=True)
+        if torch.any(sums == 0.):
+            raise ValueError('roulette_wheel: 0-sum weights for some '
+                             'populations(s)')
+        weights = weights / sums
     # shape: (n_rows, n_cols)
     cdfs = weights.cumsum(dim=1)
     thresholds = torch.rand(*[n_rounds, weights.size(0), 1],
@@ -69,7 +73,7 @@ def tournament(
     rows = rows.reshape(-1, 1).tile(1, n_winners)
     winners = items[rows, best_indices]
     if return_scores:
-        return best_scores, winners
+        return winners, best_scores
     else:
         return winners
 
@@ -79,7 +83,7 @@ def plus_selection(
         parents: torch.Tensor,
         offspring: torch.Tensor,
         #TODO also support offspring_first: bool = True,
-        descending: bool = True
+        descending: bool = True,
       ):
     device = parents.device
     combined = torch.hstack([offspring, parents])
@@ -90,8 +94,6 @@ def plus_selection(
     k = parents.size(1)
     topk_fitnesses = sorted_fitnesses[:, 0:k]
     topk_indices = sorted_indices[:, 0:k]
-    #TODO this maybe trigger a host-dev sync since it uses number of pops to
-    # build a tensor?
     populations = torch.arange(parents.size(0), device=device)
     populations = populations.reshape(-1, 1).tile(1, k)
     topk = combined[populations, topk_indices]

@@ -3,7 +3,7 @@ from typing import Any, Union, Tuple, List, Dict, Optional, Iterable, Callable
 
 import torch
 
-from .utils import aranges
+from pcgp.utils import aranges
 
 # notes on the "primitive_functions":
 # - they should be able to take as input tensors of any size in the form
@@ -23,6 +23,9 @@ from .utils import aranges
 #   evaluating multiple nodes at once
 
 
+PrimitiveType = Callable[[torch.Tensor], torch.Tensor]
+
+
 def eval_populations(
         input: torch.Tensor,
         dnas: torch.Tensor,
@@ -31,7 +34,8 @@ def eval_populations(
         n_hidden: int,
         primitive_arities: torch.Tensor,
         max_arity: int,
-        primitive_functions: List[Callable[[torch.Tensor], torch.Tensor]]
+        primitive_functions: List[Callable[[torch.Tensor], torch.Tensor]],
+        nan_to_zero: bool = True # replace NaN with 0. in the output
       ):
     device = input.device
     n_populations, n_individuals = dnas.size(0), dnas.size(1)
@@ -61,6 +65,8 @@ def eval_populations(
         max_arity=max_arity 
       )
     single_input_size = input.size()[1:]
+    if nan_to_zero:
+        output[output.isnan()] = 0.
     return output.reshape(n_populations, n_individuals, *single_input_size)
 
 
@@ -140,7 +146,6 @@ def eval_primitives(
         primitives: torch.Tensor,
         primitive_functions,
         primitive_arities: torch.Tensor,
-        nan_to_num: bool = True # subst nan, inf and -inf with 0
       ):
     input_size = inputs.size()[1:]
     device = inputs.device
@@ -167,8 +172,6 @@ def eval_primitives(
         prim_outputs = f(prim_inputs)
         prim_outputs = prim_outputs.reshape(n_calls, *input_size)
         output[mask] = prim_outputs
-    if nan_to_num:
-        output = output.nan_to_num(nan=0.0, posinf=0.0, neginf=0.0)
     return output
 
 #TODO write a custom kernel that evaluates multiple primitives in parallel?

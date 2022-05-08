@@ -20,8 +20,7 @@ def aranges(
 
 #TODO try to use proper random integer generation in a custom kernel
 # random ints in [0, high) for each high in highs; if size is different from
-# highs.size(), they are broadcasted; highs must be compatible for
-# multiplication with rand_dtype
+# highs.size(), they are broadcasted
 #TODO this could also be achieved by sampling ints, and then rescaling them
 def randints(
         highs: torch.Tensor,

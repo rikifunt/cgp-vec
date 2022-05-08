@@ -3,7 +3,7 @@ from typing import Any, Union, Tuple, List, Dict, Optional, Iterable, Callable
 
 import torch
 
-from .utils import randints, random_mask_like
+from pcgp.utils import randints, random_mask_like
 
 # Build a 1D tensor that at each locus tells how many alleles that locus admits.
 def count_alleles(
@@ -64,6 +64,7 @@ def random_alternative_alleles(
     alts = randints(highs=sups, generator=generator, dtype=dtype)
     alts[alts >= dnas[loci]] += 1
     return alts
+
 
 def mutate(
         dnas: torch.Tensor,
