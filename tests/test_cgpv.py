@@ -3,16 +3,10 @@ import unittest
 
 import torch
 
-import pcgp
-
-class TestUtils(unittest.TestCase):
-    
-    def test_seeded_generator(self):
-        self.assertTrue(True)
+import cgpv
 
 class TestPhenotype(unittest.TestCase):
 
-    #TODO also test adding non-coding genes and different
     def test_eval_populations(self):
 
         target = lambda x: x[0]**2 - x[0]
@@ -34,7 +28,7 @@ class TestPhenotype(unittest.TestCase):
         input = torch.linspace(-5.,5., steps=50).expand(1, -1)
         true_output = target(input)
 
-        outputs = pcgp.eval_populations(
+        outputs = cgpv.eval_populations(
             input=input,
             dnas=dnas,
             n_inputs=1,
@@ -91,7 +85,7 @@ class TestPhenotype(unittest.TestCase):
         simple_target = lambda x: 1 / x[0]**12
         simple_true_output = simple_target(input)
         true_output = target(input)
-        outputs = pcgp.eval_populations(
+        outputs = cgpv.eval_populations(
             input=input,
             dnas=dnas,
             n_inputs=1,
@@ -111,15 +105,15 @@ class TestPhenotype(unittest.TestCase):
 class TestPopulations(unittest.TestCase):
 
     def test_call(self) -> None:
-        generator = pcgp.seeded_generator(42)
+        generator = cgpv.seeded_generator(42)
         prims = [ lambda x: x[0] + x[1], lambda x: x[0] * x[1],
                   lambda x: x[0] - x[1], lambda x: x[0] / x[1] ]
         arities = [2, 2, 2, 2]
-        populations = pcgp.Populations.random(
+        populations = cgpv.Populations.random(
             5, 10, 1, 1, 10, prims, arities, generator=generator)
         input = torch.linspace(-1., 1., steps=50).expand(1, -1)
         outputs = populations(input)
-        true_outputs = pcgp.eval_populations(
+        true_outputs = cgpv.eval_populations(
             input=input, dnas=populations._dnas, n_inputs=1, n_outputs=1,
             n_hidden=10, primitive_arities=torch.tensor(arities), max_arity=2,
             primitive_functions=prims)
@@ -127,7 +121,7 @@ class TestPopulations(unittest.TestCase):
 
     def test_regression_tensor_sanity(self) -> None:
 
-        rng = pcgp.seeded_generator(42)
+        rng = cgpv.seeded_generator(42)
         device = rng.device
 
         def mse(x, y):
@@ -150,7 +144,7 @@ class TestPopulations(unittest.TestCase):
         n_hidden = 10
         mutation_rate = 0.2
 
-        populations = pcgp.Populations.random(
+        populations = cgpv.Populations.random(
             n_populations=n_populations, pop_size=n_parents, n_inputs=1,
             n_outputs=1, n_hidden=n_hidden, primitive_functions=primitive_functions,
             primitive_arities=primitive_arities, descending_fitness=False,
@@ -245,8 +239,8 @@ class TestPopulations(unittest.TestCase):
             self, seed, loss, primitive_functions, primitive_arities,
             input, true_output) -> None:
 
-        rng = pcgp.seeded_generator(seed)
-        test_rng = pcgp.seeded_generator(seed)
+        rng = cgpv.seeded_generator(seed)
+        test_rng = cgpv.seeded_generator(seed)
         device = rng.device
 
         self.assertTrue(torch.equal(rng.get_state(), test_rng.get_state()))
@@ -256,7 +250,7 @@ class TestPopulations(unittest.TestCase):
         n_hidden = 10
         mutation_rate = 0.2
 
-        populations = pcgp.Populations.random(
+        populations = cgpv.Populations.random(
             n_populations=n_populations, pop_size=n_parents, n_inputs=1,
             n_outputs=1, n_hidden=n_hidden,
             primitive_functions=primitive_functions,
@@ -269,7 +263,7 @@ class TestPopulations(unittest.TestCase):
 
         populations.fitnesses = loss(populations(input), true_output)
 
-        n_alleles = pcgp.count_alleles(
+        n_alleles = cgpv.count_alleles(
             n_inputs=1,
             n_outputs=1,
             n_hidden=n_hidden,
@@ -279,7 +273,7 @@ class TestPopulations(unittest.TestCase):
           )
         self.assertTrue(torch.equal(n_alleles, conf.n_alleles))
 
-        dnas = pcgp.random_populations(
+        dnas = cgpv.random_populations(
             n_populations=n_populations,
             pop_size=n_parents,
             n_alleles=n_alleles,
@@ -289,7 +283,7 @@ class TestPopulations(unittest.TestCase):
 
         self.assertTrue(torch.equal(rng.get_state(), test_rng.get_state()))
 
-        outputs = pcgp.eval_populations(
+        outputs = cgpv.eval_populations(
             input=input,
             dnas=dnas,
             n_inputs=1,
@@ -315,7 +309,7 @@ class TestPopulations(unittest.TestCase):
             parents = populations.roulette_wheel(n_rounds=n_offspring,
                                                  generator=rng)
 
-            parent_dnas = pcgp.roulette_wheel(
+            parent_dnas = cgpv.roulette_wheel(
                 n_rounds=n_offspring,
                 items=dnas,
                 weights= 1./losses,
@@ -330,7 +324,7 @@ class TestPopulations(unittest.TestCase):
 
             offspring = parents.mutate(rate=mutation_rate, generator=rng)
 
-            offspring_dnas = pcgp.mutate(
+            offspring_dnas = cgpv.mutate(
               dnas=parent_dnas,
               rate=mutation_rate,
               n_alleles=n_alleles,
@@ -345,7 +339,7 @@ class TestPopulations(unittest.TestCase):
 
             offspring.fitnesses = loss(offspring(input), true_output)
 
-            offspring_outputs = pcgp.eval_populations(
+            offspring_outputs = cgpv.eval_populations(
                 input=input,
                 dnas=offspring_dnas,
                 n_inputs=1,
@@ -366,7 +360,7 @@ class TestPopulations(unittest.TestCase):
 
             populations = offspring.plus_selection(populations)
 
-            dnas, losses = pcgp.plus_selection(
+            dnas, losses = cgpv.plus_selection(
                 parents=dnas,
                 parent_fitnesses=losses,
                 offspring=offspring_dnas,

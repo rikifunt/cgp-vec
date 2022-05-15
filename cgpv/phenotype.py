@@ -3,7 +3,7 @@ from typing import Any, Union, Tuple, List, Dict, Optional, Iterable, Callable
 
 import torch
 
-from pcgp.utils import aranges
+from cgpv.utils import aranges
 
 # notes on the "primitive_functions":
 # - they should be able to take as input tensors of any size in the form

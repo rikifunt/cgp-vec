@@ -1,23 +1,23 @@
 
-from pcgp.utils import (
+from cgpv.utils import (
     seeded_generator
   )
 
-from pcgp.genops import (
+from cgpv.genops import (
     count_alleles,
     random_populations,
     mutate,
   )
 
-from pcgp.phenotype import (
+from cgpv.phenotype import (
     eval_populations,
     PrimitiveType
 )
 
-from pcgp.selection import (
+from cgpv.selection import (
     roulette_wheel,
     tournament,
     plus_selection,
   )
 
-from pcgp.populations import Populations
+from cgpv.populations import Populations

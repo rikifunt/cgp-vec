@@ -98,7 +98,3 @@ def plus_selection(
     populations = populations.reshape(-1, 1).tile(1, k)
     topk = combined[populations, topk_indices]
     return topk, topk_fitnesses
-
-#TODO this is simply a call to topk?
-def comma_selection(pop_size, offspring_fitnesses):
-    pass

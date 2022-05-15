@@ -1,9 +1,9 @@
 from setuptools import setup
 
 setup(
-    name='pcgp',
+    name='cgp-vec',
     version='0.0.1',
-    packages=['pcgp'],
+    packages=['cgpv'],
     install_requires=[
         'torch',
       ],

@@ -3,7 +3,7 @@ from typing import Any, Union, Tuple, List, Dict, Optional, Iterable, Callable
 
 import torch
 
-from pcgp.utils import randints, random_mask_like
+from cgpv.utils import randints, random_mask_like
 
 # Build a 1D tensor that at each locus tells how many alleles that locus admits.
 def count_alleles(

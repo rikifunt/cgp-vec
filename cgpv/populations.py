@@ -5,7 +5,7 @@ from types import ModuleType
 
 import torch
 
-import pcgp
+import cgpv
 
 
 # Methods that return a new Populations object usually internally share the
@@ -23,18 +23,18 @@ class Populations:
 
     @staticmethod
     def random(n_populations: int, pop_size: int, n_inputs: int, n_outputs: int,
-               n_hidden: int, primitive_functions: List[pcgp.PrimitiveType],
+               n_hidden: int, primitive_functions: List[cgpv.PrimitiveType],
                primitive_arities: Union[List[int], torch.Tensor],
                descending_fitness: bool = True,
                generator: Optional[torch.Generator] = None,
                device: Optional[torch.device] = None) -> 'Populations':
         n_primitives = len(primitive_functions)
         max_arity = max(primitive_arities) #TODO does this work for both list and tensor?
-        n_alleles = pcgp.count_alleles(
+        n_alleles = cgpv.count_alleles(
             n_inputs=n_inputs, n_outputs=n_outputs, n_hidden=n_hidden,
             n_primitives=n_primitives, max_arity=max_arity, dtype=torch.long,
             device=device)
-        dnas = pcgp.random_populations(
+        dnas = cgpv.random_populations(
             n_populations=n_populations, pop_size=pop_size, n_alleles=n_alleles,
             generator=generator, dtype=torch.long)
         return Populations(
@@ -52,7 +52,7 @@ class Populations:
     # the given parameters, so that the constructed object is always considered
     # coupled.
     def __init__(self, dnas: torch.Tensor, n_inputs: int, n_outputs: int,
-                 n_hidden: int, primitive_functions: List[pcgp.PrimitiveType],
+                 n_hidden: int, primitive_functions: List[cgpv.PrimitiveType],
                  primitive_arities: Union[List[int], torch.Tensor],
                  descending_fitness: bool = True,
                  # From here ---
@@ -77,7 +77,7 @@ class Populations:
             self._primitive_arities = primitive_arities
         self._descending_fitness = descending_fitness
         if n_alleles is None:
-            self._n_alleles = pcgp.count_alleles(
+            self._n_alleles = cgpv.count_alleles(
                 n_inputs=n_inputs, n_outputs=n_outputs, n_hidden=n_hidden,
                 n_primitives=self._n_primitives, max_arity=self._max_arity,
                 dtype=torch.long, device=device)
@@ -102,7 +102,7 @@ class Populations:
         n_inputs: int
         n_outputs: int
         n_hidden: int
-        primitive_functions: List[pcgp.PrimitiveType]
+        primitive_functions: List[cgpv.PrimitiveType]
         primitive_arities: Union[List[int], torch.Tensor]
         descending_fitness: bool
         n_alleles: Optional[Union[List[int], torch.Tensor]]
@@ -121,19 +121,6 @@ class Populations:
                 n_alleles=self._n_alleles,
                 n_primitives=self._n_primitives, max_arity=self._max_arity,
                 device=self._device)
-
-
-    def coupled(self) -> bool:
-        raise NotImplementedError('Coupling check not yet implemented :(')
-
-    # possible alternatives to detach: free, decouple, isolate, disentangle
-    def decouple(self, configuration: bool = True, dnas: bool = True) -> None:
-        raise NotImplementedError('Decoupling not yet implemented :(')
-        if configuration:
-            pass
-        if dnas:
-            pass
-
 
     def _validate_number(self, x, expected, name: str, raise_: bool):
         if x == expected:
@@ -177,7 +164,7 @@ class Populations:
               self._n_alleles.size(0), expected=dna_size,
               name='n_alleles.size(0)', raise_=raise_):
             return False
-        expected_n_alleles = pcgp.count_alleles(
+        expected_n_alleles = cgpv.count_alleles(
                 n_inputs=self._n_inputs,
                 n_outputs=self._n_outputs,
                 n_hidden=self._n_hidden,
@@ -204,7 +191,7 @@ class Populations:
 
     def mutate(self, rate: float, generator: Optional[torch.Generator],
                in_place: bool = False) -> 'Populations':
-        mutated_dnas = pcgp.mutate(
+        mutated_dnas = cgpv.mutate(
             dnas=self._dnas, rate=rate, n_alleles=self._n_alleles,
             generator=generator, in_place=in_place)
         if in_place:
@@ -214,7 +201,7 @@ class Populations:
 
 
     def __call__(self, input: torch.Tensor) -> torch.Tensor:
-        return pcgp.eval_populations(
+        return cgpv.eval_populations(
             input=input, dnas=self._dnas, n_inputs=self._n_inputs,
             n_outputs=self._n_outputs, n_hidden=self._n_hidden,
             primitive_arities=self._primitive_arities,
@@ -241,7 +228,7 @@ class Populations:
         weights = self.fitnesses
         if not self._descending_fitness:
             weights = 1./ weights #TODO is adding a small eps here a good idea?
-        extracted_dnas = pcgp.roulette_wheel(n_rounds, items=self._dnas,
+        extracted_dnas = cgpv.roulette_wheel(n_rounds, items=self._dnas,
                                              weights=weights,
                                              normalize_weights=True,
                                              generator=generator)
@@ -252,7 +239,7 @@ class Populations:
     def tournament(self, n_winners: int) -> 'Populations':
         if self._fitnesses is None:
             raise ValueError('Fitnesses have not been computed yet')
-        winner_dnas, winner_fitnesses = pcgp.tournament(
+        winner_dnas, winner_fitnesses = cgpv.tournament(
             n_winners=n_winners, items=self._dnas, scores=self._fitnesses,
             descending=self._descending_fitness, return_scores=True)
         conf = self.configuration()
@@ -263,7 +250,7 @@ class Populations:
     # always prioritizes the object it is called on, assumes both populations
     # have fitnesses; the configuration of the other object is ignored
     def plus_selection(self, other: 'Populations') -> 'Populations':
-        selected_dnas, selected_fitnesses = pcgp.plus_selection(
+        selected_dnas, selected_fitnesses = cgpv.plus_selection(
             parents=other.dnas, parent_fitnesses=other.fitnesses,
             offspring=self._dnas, offspring_fitnesses=self.fitnesses,
             descending=self._descending_fitness)
