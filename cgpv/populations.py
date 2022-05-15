@@ -1,4 +1,3 @@
-
 from typing import (Any, Union, Tuple, List, Dict, Optional, Iterable, Callable,
                     NamedTuple)
 from types import ModuleType
@@ -10,8 +9,7 @@ import cgpv
 
 # Methods that return a new Populations object usually internally share the
 # configuration or the dnas with the original object, i.e. the two object are
-# "coupled". To enforce decoupling, use the `decouple` method; to check if an
-# object is coupled, use the `coupled` method.
+# "coupled".
 # Methods that return or assign attributes of a Populations object make no
 # effort to decouple it from the object, so the user must take care not to
 # accidentally invalidate the state by modifying the attribute outside of the
@@ -29,7 +27,7 @@ class Populations:
                generator: Optional[torch.Generator] = None,
                device: Optional[torch.device] = None) -> 'Populations':
         n_primitives = len(primitive_functions)
-        max_arity = max(primitive_arities) #TODO does this work for both list and tensor?
+        max_arity = max(primitive_arities)
         n_alleles = cgpv.count_alleles(
             n_inputs=n_inputs, n_outputs=n_outputs, n_hidden=n_hidden,
             n_primitives=n_primitives, max_arity=max_arity, dtype=torch.long,

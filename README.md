@@ -4,7 +4,7 @@
 parallelized over multiple independent populations, using PyTorch as a backend 
 for basic vectorized operations.
 
-# Benchmarks
+## Benchmarks
 
 More detailed benchmarks will be available soon. Testing the examples on a 
 Google Colab GPU runtime led to execution times in the order of minutes for 
@@ -12,7 +12,7 @@ Google Colab GPU runtime led to execution times in the order of minutes for
 with configurations similar to those in [this GECCO '07 paper](https://dl.acm.org/doi/10.1145/1276958.1277276), which uses bigger populations than 
 most CGP literature.
 
-# Development status
+## Development status
 
 The library is still in a very early development stage. The provided 
 functionality works as intended, and is sufficient to implement common CGP 
@@ -21,7 +21,7 @@ genotypes and no "levels back" parameter. This is the most common CGP
 configuration, since it can encode any (bounded) directed acyclic graph. Some 
 minor unit tests are also missing.
 
-# Planned features
+## Planned features
 
 - support for all classical CGP configurations (multiple rows, levels back 
   parameter);
@@ -36,7 +36,7 @@ minor unit tests are also missing.
 - convenience functions (vectorized) for common CGP problems: symbolic 
   regression losses, etc.
 
-# Installation
+## Installation
 
 While this repository contains a proper Python package, it is not yet 
 registered on PyPy, so it must be installed via cloning and `pip install .` for 
@@ -45,11 +45,11 @@ been tested on the major Python versions 3.7 and 3.10.
 
 Unit tests are in the `tests` directory; to run all of them, one can run `python -m unittest -v "tests.test_cgpv"` at the top directory. 
 
-# Usage
+## Usage
 
 Proper API documentation will be available soon. For now, an overview of the 
 API is given below. Full symbolic regression examples are also available in the 
-`examples` directory.
+`examples` directory, both as python scripts and as notebooks.
 
 The whole API is contained in the `cgpv` package. The vectorized CGP operations 
 are available either as simple functions, or as methods of the `Populations` 
@@ -69,7 +69,7 @@ The following (vectorized) operations are available:
 
 - plus-selection: `plus_selection` or `Populations.plus_selection`;
 
-## More on `Populations` objects
+### More on `Populations` objects
 
 `Populations` objects also provide a `fitnesses` tensor attribute for convenience, used to store fitness matrices for the populations. If set, this attribute is then used by the selection methods.
 
@@ -84,3 +84,15 @@ Seed parity between the methods of `Populations` and corresponding functions
 can be explicitely tested on CPU devices in the unit tests; note, however, that 
 running on CUDA devices may break reproducibility anyway (see the [PyTorch 
 documentation on reproducibility](https://pytorch.org/docs/stable/notes/randomness.html).
+
+## BibTeX Citation
+
+```
+@misc{cgpvec-2022-git,
+    author = {Fanti, Andrea and Gallotta, Roberto},
+    title = {{cgp-vec}: Vectorized Cartesian Genetic Programming},
+    year = {2022},
+    publisher = {GitHub},
+    journal = {GitHub repository}}
+}
+```

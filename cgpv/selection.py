@@ -1,4 +1,3 @@
-
 from typing import Any, Union, Tuple, List, Dict, Optional, Iterable, Callable
 
 import torch
@@ -35,7 +34,7 @@ def roulette_wheel(
     # (cdfs < thresholds) has shape (n_rounds, n_pops, n_inds)
     columns = (cdfs < thresholds).sum(dim=2).T
     # columns has shape (n_rounds, n_pops)
-    #TODO check if this mess can be simplified (see columns version)
+    #TODO check if this can be simplified (see columns version)
     selected = items[rows, columns]
     return selected
 
@@ -55,7 +54,6 @@ def roulette_wheel_columns(
     # (s < r) has shape ( n_rounds, n_inds, n_pops )
     k = (s < r).sum(dim=1)
     # k has shape ( n_rounds, n_pops )
-    # 
     return items[k, torch.arange(weights.size(1), device=device)]
 
 # this has no stability guarantee as it calls torch.topk

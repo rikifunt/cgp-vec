@@ -1,3 +1,5 @@
+# Example of using cgp-vec for symbolic regression.
+
 from typing import Any, Union, Tuple, List, Dict, Optional, Iterable, Callable
 
 from tqdm import tqdm
@@ -8,10 +10,13 @@ def mse(x, y):
     reduced_dims = tuple(range(2, x.dim()))
     return torch.mean((x - y)**2, dim=reduced_dims)
 
+# the original loss used for Koza regression problems
 def koza_regression_loss(x, y):
     reduced_dims = tuple(range(2, x.dim()))
     return torch.sum((x - y).abs(), dim=reduced_dims)
 
+# A single function to perform multiple steps of symbolic regression with a 
+# (mu+lambda)-ES. Uses tqdm for the progress bar.
 def plus_regression(
         n_steps: int, mutation_rate: float, n_populations: int, n_parents: int,
         n_offspring: int, n_hidden: int, input: torch.Tensor,
@@ -60,6 +65,9 @@ def main():
     ]
     koza_primitive_arities = torch.tensor([2, 2, 2, 2])
     
+    # Instantiate 2 Koza problems (Koza-2 and Koza-3). To switch between the 
+    # two, pass the appropriate koza*_outputs to the true_output parameter of 
+    # plus_regression.
     koza_inputs = torch.linspace(-1., 1., 50).expand(1, -1)
     koza2_target = lambda x: x[0]**5 - 2*x[0]**3 + x[0]
     koza3_target = lambda x: x[0]**6 - 2*x[0]**4 + x[0]**2

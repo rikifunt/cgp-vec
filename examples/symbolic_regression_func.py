@@ -1,3 +1,6 @@
+# Example of using cgp-vec for symbolic regression, without using the 
+# Populations class.
+
 from typing import Any, Union, Tuple, List, Dict, Optional, Iterable, Callable
 
 from tqdm import tqdm
@@ -9,10 +12,13 @@ def mse(x, y):
     reduced_dims = tuple(range(2, x.dim()))
     return torch.mean((x - y)**2, dim=reduced_dims)
 
+# the original loss used for Koza regression problems
 def koza_regression_loss(x, y):
     reduced_dims = tuple(range(2, x.dim()))
     return torch.sum((x - y).abs(), dim=reduced_dims)
 
+# A single function to perform multiple steps of symbolic regression with a 
+# (mu+lambda)-ES. Uses tqdm for the progress bar.
 def plus_regression(
         n_steps: int,
         mutation_rate: float,
@@ -34,6 +40,7 @@ def plus_regression(
     loss = loss or mse
     gene_dtype = gene_dtype or torch.long
 
+    # Use the device of the generator if given.
     if generator is not None:
         device = generator.device
         input = input.to(device)
@@ -42,10 +49,10 @@ def plus_regression(
     else:
         device = input.device
 
+    # Compute preliminary information.
     n_inputs, n_outputs = 1, 1
     n_primitives = len(primitive_functions)
     max_arity = int(torch.max(primitive_arities).item())
-
     n_alleles = cgpv.count_alleles(
         n_inputs,
         n_outputs,
@@ -55,6 +62,8 @@ def plus_regression(
         dtype=gene_dtype,
         device=device
       )
+  
+    # Generate and evaluate the initial populations.
     dnas = cgpv.random_populations(
         n_populations=n_populations,
         pop_size=n_parents,
@@ -62,7 +71,6 @@ def plus_regression(
         generator=generator,
         dtype=gene_dtype
       )
-
     outputs = cgpv.eval_populations(
         input=input,
         dnas=dnas,
@@ -78,6 +86,7 @@ def plus_regression(
     pbar = tqdm(range(n_steps))
     for i in pbar:
 
+        # Select parents for reproduction proportionally to their fitnesses.
         parents = cgpv.roulette_wheel(
             n_rounds=n_offspring,
             items=dnas,
@@ -86,13 +95,13 @@ def plus_regression(
             generator=generator,
           )
 
+        # Clone and mutate parents, and evaluate them.
         offspring = cgpv.mutate(
             dnas=parents,
             rate=mutation_rate,
             n_alleles=n_alleles,
             generator=generator,
           )
-
         offspring_outputs = cgpv.eval_populations(
             input=input,
             dnas=offspring,
@@ -105,7 +114,7 @@ def plus_regression(
           )
         offspring_losses = loss(offspring_outputs, true_output)
 
-        #TODO also keep and log the dnas' outputs
+        # Select the parents for the next generation with plus-selection.
         dnas, losses = cgpv.plus_selection(
             parent_fitnesses=losses,
             offspring_fitnesses=offspring_losses,
@@ -115,17 +124,6 @@ def plus_regression(
         )
 
         pbar.set_postfix({'loss': f'{losses.mean():0.2f} +- {losses.std():0.2f}'})
-
-        outputs = cgpv.eval_populations(
-            input=input,
-            dnas=dnas,
-            n_inputs=n_inputs,
-            n_outputs=n_outputs,
-            n_hidden=n_hidden,
-            primitive_arities=primitive_arities,
-            primitive_functions=primitive_functions,
-            max_arity=max_arity
-          )
 
         if observe_step is not None:
             observe_step(step=i, observations={
@@ -139,6 +137,10 @@ def main():
     #device = torch.device('cuda')
     device = torch.device('cpu')
 
+    # Instantiate 2 Koza problems (Koza-2 and Koza-3). To switch between the 
+    # two, pass the appropriate koza*_outputs to the true_output parameter of 
+    # plus_regression.
+    
     koza_primitives = [
         lambda x: x[0] + x[1],
         lambda x: x[0] * x[1],

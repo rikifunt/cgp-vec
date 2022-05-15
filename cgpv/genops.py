@@ -1,11 +1,10 @@
-
 from typing import Any, Union, Tuple, List, Dict, Optional, Iterable, Callable
 
 import torch
 
 from cgpv.utils import randints, random_mask_like
 
-# Build a 1D tensor that at each locus tells how many alleles that locus admits.
+
 def count_alleles(
         n_inputs: int,
         n_outputs: int,
@@ -40,8 +39,7 @@ def random_populations(
         dtype: Optional[torch.dtype] = None, # randints default
       ) -> torch.Tensor:
     dna_size = n_alleles.size(0)
-    #TODO is there a way to avoid generating input region and non-coding output
-    #genes?
+    #TODO avoid generating input region and non-coding output genes
     dnas = randints(
         highs=n_alleles, size=[n_populations, pop_size, dna_size],
         generator=generator, dtype=dtype
@@ -49,7 +47,6 @@ def random_populations(
     return dnas
 
 # extract random alternatives for each gene in loci (must be a bool mask for now)
-# dnas, loci and n_alleles must be on the same device
 def random_alternative_alleles(
         dnas: torch.Tensor,
         loci: torch.Tensor, # has to be of dtype bool for now
@@ -71,7 +68,7 @@ def mutate(
         rate: float,
         n_alleles: torch.Tensor,
         generator: torch.Generator = None,
-        in_place: bool = False, # if true, mutates dnas directly and returns it
+        in_place: bool = False,
       ) -> torch.Tensor:
     loci = random_mask_like(dnas, rate=rate, generator=generator,
                             device=n_alleles.device)

@@ -1,4 +1,3 @@
-
 from cgpv.utils import (
     seeded_generator
   )

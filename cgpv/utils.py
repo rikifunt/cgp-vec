@@ -3,7 +3,6 @@ from typing import Any, Union, Tuple, List, Dict, Optional, Iterable, Callable
 
 import torch
 
-# from https://codereview.stackexchange.com/a/84980
 #TODO generalize to any size of starts/stops, now works only with 1D tensors
 def aranges(
         starts: torch.Tensor,
@@ -18,13 +17,9 @@ def aranges(
     return steps + torch.arange(total_length, dtype=dtype, device=device)
 
 
-#TODO try to use proper random integer generation in a custom kernel
-# random ints in [0, high) for each high in highs; if size is different from
-# highs.size(), they are broadcasted
-#TODO this could also be achieved by sampling ints, and then rescaling them
 def randints(
         highs: torch.Tensor,
-        size: Optional[Any] = None, # anything that can be used as torch size, def highs.size()
+        size: Optional[Any] = None, # anything that can be used as torch size
         generator: Optional[torch.Generator] = None,
         dtype: Optional[torch.dtype] = None, # long
       ) -> torch.Tensor:
