@@ -67,13 +67,17 @@ changelog.
 
 # 2: API rehaul
 
-0. [ ] move the unit tests that need significant computational resources
-   to a separate test module which is not invoked by default
+0. [x] migrate to pytest for unit testing, since it supports markers and
+   excluding tests easily
 
-	- [ ] write a jupyter notebook (compatible with colab) that runs
-	those tests
+	- [x] migrate unittest code to pytest
 
-	- [ ] update the unit test workflow section in CONTRIBUING.md
+	- [x] add test markers for slow tests and tests that need CUDA, and
+	use them in existing tests
+
+	- [x] test unit testing with pytest :)
+
+	- [x] update relevant sections of `CONTRIBUTING.md`
 
 0. [ ] put stuff that is not specific to CGP in a separate module (e.g.
    selection stuff)

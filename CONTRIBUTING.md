@@ -45,16 +45,17 @@ The workflow of a typical commit is:
 
 0. choose what to work on (e.g. from `TODO.md`)
 
-1. write code (see the [coding guidelines](#coding-guidelines) below)
+1. write code (see the [Coding guidelines](#coding-guidelines) below)
 
 	- annotate types of everything, unless Python typing issues would
 	make the code less readable
 	
 	- when modifying or extending the API:
 	
-		- add or modify unit tests (see [unit testing](#unit-testing))
+		- add or modify unit tests (see [Adding or modifying unit
+		tests](#adding-or-modifying-unit-tests))
 	
-		- document API modifications in (see the section about [writing
+		- document API modifications in (see [Writing
 		documentation](#writing-documentation)):
 
 			- the API documentation
@@ -82,7 +83,7 @@ The workflow of a typical commit is:
    as `black <modified files>` or `black .` to run it on the whole
    repository
 
-4. run relevant units tests (see [unit testing](#unit-testing))
+4. run relevant units tests (see [Unit testing](#unit-testing))
 
 5. update text files:
 
@@ -118,15 +119,46 @@ The workflow of a typical commit is:
 
 # Unit testing
 
-Unit tests for this library use
-[`unittest`](https://docs.python.org/3/library/unittest.html). To run
-specific unit tests, use:
+This library relies on [pytest](https://docs.pytest.org/en/7.2.x/) for
+unit testing, configured in `pytest.ini`.
 
-	`python -m unittest <modified module>`
+All unit tests are located in the `tests` directory, which is also
+configured as pytest's `testpaths`, meaning that all tests can be run by
+simply invoking `pytest` with no arguments; see pytest's documentation
+for details on how to run specific tests.
 
-(TODO how to run all tests?)
+A number of custom pytest
+[markers](https://docs.pytest.org/en/7.2.x/how-to/mark.html) are defined
+in `pytest.ini`, to make it convenient to run tests that are scattered
+across the `tests` directory, but share some kind of property. These can
+be inspected by running:
 
-See the `unittest` documentation for more details.
+```
+pytest --markers
+```
+
+For example, to only run tests marked with `slow`, do:
+
+```
+pytest -m slow
+```
+
+Instead, to only run tests that are *not* marked with `slow`, do:
+
+```
+pytest -m "not slow"
+```
+
+## Adding or modifying unit tests
+
+Things to keep in mind when adding or modifying unit tests:
+
+- remember to keep marker decorators updated (e.g. `slow`, `cuda`,
+  etc.): always add all those that apply, and remove those that don't
+  apply anymore
+
+- try to mimic the structure of the `cgpv` package when adding new
+  modules or directories to `tests`
 
 
 # Writing documentation

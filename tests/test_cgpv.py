@@ -1,11 +1,10 @@
-import unittest
-
+from pytest import mark
 import torch
 
 import cgpv
 
 
-class TestPhenotype(unittest.TestCase):
+class TestPhenotype:
     def test_eval_populations(self):
 
         target = lambda x: x[0] ** 2 - x[0]
@@ -47,7 +46,7 @@ class TestPhenotype(unittest.TestCase):
             max_arity=2,
             primitive_functions=prims,
         )
-        self.assertTrue(torch.all(true_output == outputs))
+        assert torch.all(true_output == outputs)
 
     def test_crazy_dna(self):
         def mse(x, y):
@@ -140,12 +139,12 @@ class TestPhenotype(unittest.TestCase):
         )
         # print(f'max f = {true_output.max()}, min f = {true_output.min()}')
         # print(f'max y = {outputs.max()}, min y = {outputs.min()}')
-        self.assertTrue(torch.allclose(simple_true_output, outputs))
-        self.assertTrue(torch.all(true_output == outputs))
+        assert torch.allclose(simple_true_output, outputs)
+        assert torch.all(true_output == outputs)
         # self.assertFalse(torch.any(loss(outputs, koza3_output).isinf()))
 
 
-class TestPopulations(unittest.TestCase):
+class TestPopulations:
     def test_call(self) -> None:
         generator = cgpv.seeded_generator(42)
         prims = [
@@ -170,8 +169,9 @@ class TestPopulations(unittest.TestCase):
             max_arity=2,
             primitive_functions=prims,
         )
-        self.assertTrue(torch.all(outputs == true_outputs))
+        assert torch.all(outputs == true_outputs)
 
+    @mark.slow
     def test_regression_tensor_sanity(self) -> None:
 
         rng = cgpv.seeded_generator(42)
@@ -212,13 +212,13 @@ class TestPopulations(unittest.TestCase):
             device=device,
         )
 
-        self.assertTrue(populations.validate(raise_=False))
+        assert populations.validate(raise_=False)
 
-        self.assertFalse(torch.any(populations(input).isnan()))
+        assert not (torch.any(populations(input).isnan()))
 
         populations.fitnesses = loss(populations(input), true_output)
 
-        self.assertFalse(torch.any(populations.fitnesses.isnan()))
+        assert not (torch.any(populations.fitnesses.isnan()))
 
         n_steps = 500
 
@@ -226,35 +226,27 @@ class TestPopulations(unittest.TestCase):
 
             W = populations.fitnesses
             W = 1.0 / W
-            self.assertFalse(
-                torch.any(W.isnan() | W.isinf()), f"Degenerate weights at step {i}"
-            )
+            assert not (torch.any(W.isnan() | W.isinf())), f"Degenerate weights at step {i}"
 
             parents = populations.roulette_wheel(n_rounds=n_offspring, generator=rng)
 
-            self.assertTrue(parents.validate(raise_=False))
+            assert parents.validate(raise_=False)
 
             offspring = parents.mutate(rate=mutation_rate, generator=rng)
 
-            self.assertTrue(offspring.validate(raise_=False))
+            assert offspring.validate(raise_=False)
 
-            self.assertFalse(
-                torch.any(offspring(input).isnan()), f"NaN offspring output at step {i}"
-            )
+            assert not (torch.any(offspring(input).isnan())), f"NaN offspring output at step {i}"
 
             offspring.fitnesses = loss(offspring(input), true_output)
 
-            self.assertFalse(
-                torch.any(offspring.fitnesses.isnan()),
-                f"NaN offspring fitnesses at step {i}",
-            )
+            assert not (torch.any(offspring.fitnesses.isnan())), f"NaN offspring fitnesses at step {i}"
 
             populations = offspring.plus_selection(populations)
 
-            self.assertTrue(populations.validate(raise_=False))
+            assert populations.validate(raise_=False)
 
-    # Test the parity of the Populations object with the functional API.
-
+    @mark.slow
     def test_koza3_parity(self) -> None:
         seed = 42
 
@@ -284,6 +276,7 @@ class TestPopulations(unittest.TestCase):
             true_output=true_output,
         )
 
+    @mark.slow
     def test_koza2_parity(self) -> None:
         seed = 42
 
@@ -321,7 +314,7 @@ class TestPopulations(unittest.TestCase):
         test_rng = cgpv.seeded_generator(seed)
         device = rng.device
 
-        self.assertTrue(torch.equal(rng.get_state(), test_rng.get_state()))
+        assert torch.equal(rng.get_state(), test_rng.get_state())
 
         n_populations = 5
         n_parents, n_offspring = 50, 48
@@ -343,7 +336,7 @@ class TestPopulations(unittest.TestCase):
 
         conf = populations.configuration()
 
-        self.assertFalse(conf.descending_fitness)
+        assert not conf.descending_fitness
 
         populations.fitnesses = loss(populations(input), true_output)
 
@@ -355,7 +348,7 @@ class TestPopulations(unittest.TestCase):
             max_arity=2,
             device=device,
         )
-        self.assertTrue(torch.equal(n_alleles, conf.n_alleles))
+        assert torch.equal(n_alleles, conf.n_alleles)
 
         dnas = cgpv.random_populations(
             n_populations=n_populations,
@@ -363,9 +356,9 @@ class TestPopulations(unittest.TestCase):
             n_alleles=n_alleles,
             generator=test_rng,
         )
-        self.assertTrue(torch.equal(dnas, populations.dnas))
+        assert torch.equal(dnas, populations.dnas)
 
-        self.assertTrue(torch.equal(rng.get_state(), test_rng.get_state()))
+        assert torch.equal(rng.get_state(), test_rng.get_state())
 
         outputs = cgpv.eval_populations(
             input=input,
@@ -377,20 +370,19 @@ class TestPopulations(unittest.TestCase):
             primitive_functions=primitive_functions,
             max_arity=2,
         )
-        self.assertTrue(torch.equal(populations(input), outputs))
+        assert torch.equal(populations(input), outputs)
         losses = loss(outputs, true_output)
-        self.assertTrue(torch.equal(losses, populations.fitnesses))
+        assert torch.equal(losses, populations.fitnesses)
 
         n_steps = 500
 
-        self.assertTrue(torch.equal(rng.get_state(), test_rng.get_state()))
+        assert torch.equal(rng.get_state(), test_rng.get_state())
 
         for i in range(n_steps):
 
-            self.assertTrue(
-                torch.equal(rng.get_state(), test_rng.get_state()),
-                msg=f"Wrong RNG state at step {i} [0]",
-            )
+            assert torch.equal(
+                rng.get_state(), test_rng.get_state()
+            ), f"Wrong RNG state at step {i} [0]"
 
             parents = populations.roulette_wheel(n_rounds=n_offspring, generator=rng)
 
@@ -401,14 +393,11 @@ class TestPopulations(unittest.TestCase):
                 normalize_weights=True,
                 generator=test_rng,
             )
-            self.assertTrue(
-                torch.equal(parents.dnas, parent_dnas), msg=f"Wrong parents at step {i}"
-            )
+            assert torch.equal(parents.dnas, parent_dnas), f"Wrong parents at step {i}"
 
-            self.assertTrue(
-                torch.equal(rng.get_state(), test_rng.get_state()),
-                msg=f"Wrong RNG state at step {i} [1]",
-            )
+            assert torch.equal(
+                rng.get_state(), test_rng.get_state()
+            ), f"Wrong RNG state at step {i} [1]"
 
             offspring = parents.mutate(rate=mutation_rate, generator=rng)
 
@@ -419,15 +408,13 @@ class TestPopulations(unittest.TestCase):
                 generator=test_rng,
             )
 
-            self.assertTrue(
-                torch.equal(rng.get_state(), test_rng.get_state()),
-                msg=f"Wrong RNG state at step {i} [2]",
-            )
+            assert torch.equal(
+                rng.get_state(), test_rng.get_state()
+            ), f"Wrong RNG state at step {i} [2]"
 
-            self.assertTrue(
-                torch.equal(offspring.dnas, offspring_dnas),
-                msg=f"Wrong offspring at step {i}",
-            )
+            assert torch.equal(
+                offspring.dnas, offspring_dnas
+            ), f"Wrong offspring at step {i}"
 
             offspring.fitnesses = loss(offspring(input), true_output)
 
@@ -443,16 +430,14 @@ class TestPopulations(unittest.TestCase):
             )
             offspring_losses = loss(offspring_outputs, true_output)
 
-            self.assertTrue(
-                torch.equal(offspring(input), offspring_outputs),
-                msg=f"Wrong offspring eval at step {i}",
-            )
-            self.assertTrue(
-                torch.equal(offspring.fitnesses, offspring_losses),
-                msg=f"Wrong offspring fitnesses at step {i}",
-            )
-            self.assertTrue(torch.equal(populations.dnas, dnas))
-            self.assertTrue(torch.equal(populations.fitnesses, losses))
+            assert torch.equal(
+                offspring(input), offspring_outputs
+            ), f"Wrong offspring eval at step {i}"
+            assert torch.equal(
+                offspring.fitnesses, offspring_losses
+            ), f"Wrong offspring fitnesses at step {i}"
+            assert torch.equal(populations.dnas, dnas)
+            assert torch.equal(populations.fitnesses, losses)
 
             populations = offspring.plus_selection(populations)
 
@@ -464,14 +449,7 @@ class TestPopulations(unittest.TestCase):
                 descending=False,
             )
 
-            self.assertTrue(
-                torch.equal(dnas, populations.dnas), msg=f"Wrong nextgen at step {i}"
-            )
-            self.assertTrue(
-                torch.equal(losses, populations.fitnesses),
-                msg=f"Wrong nextgen fitnesses at step {i}",
-            )
-
-
-if __name__ == "__main__":
-    unittest.main()
+            assert torch.equal(dnas, populations.dnas), f"Wrong nextgen at step {i}"
+            assert torch.equal(
+                losses, populations.fitnesses
+            ), f"Wrong nextgen fitnesses at step {i}"
