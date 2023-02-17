@@ -56,13 +56,20 @@ The workflow of a typical commit is:
 		tests](#adding-or-modifying-unit-tests))
 	
 		- document API modifications in (see [Writing
-		documentation](#writing-documentation)):
+		documentation](#writing-documentation); alternatively, it is
+		acceptable at this stage to simply mark the documentation as
+		outdated):
 
 			- the API documentation
 
 			- the user manual (if it exists)
+		
+		- keep input sanity checks updated
+
+		- keep examples updated
 	
-	- document the modification of internal functions:
+	- document the modification of internal functions (at this stage, it
+	is also acceptable to simply mark the documentation as outdated):
 		
 		- add or modify docstrings of internal functions where needed
 		(their name or behaviour is not self-explanatory)
@@ -83,9 +90,13 @@ The workflow of a typical commit is:
    as `black <modified files>` or `black .` to run it on the whole
    repository
 
+3. clean unused imports (e.g. using
+   [`autoflake`](https://github.com/PyCQA/autoflake), or manually)
+
 4. run relevant units tests (see [Unit testing](#unit-testing))
 
-5. update text files:
+5. update text files (at this stage, it is also acceptable to mark the
+   relevant portion as outdated):
 
 	- `TODO.md` with all the stuff that has been done, or new stuff that
 	needs to be done
@@ -101,13 +112,14 @@ The workflow of a typical commit is:
 	`TODO.md`)
 	
 	- optional but useful guidelines:
-		
+
 		- don't fit multiple independent changes into one commit
 
 
 # Coding guidelines
-	
-- write self-explanatory code whenever possible
+
+- write self-explanatory code whenever possible, so that there is no
+  need to comment it
 
 - only comment code for two reasons:
 	

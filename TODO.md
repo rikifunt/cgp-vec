@@ -64,6 +64,9 @@ changelog.
 
 5. [ ] find a way to run python 3.11 on colab
 
+	- remember to drop dependency on typing extensions when a Python
+	version >= 3.8 is adopted (since we only use the `Protocol` feature)
+
 
 # 2: API rehaul
 
@@ -79,38 +82,40 @@ changelog.
 
 	- [x] update relevant sections of `CONTRIBUTING.md`
 
-0. [ ] put stuff that is not specific to CGP in a separate module (e.g.
-   selection stuff)
+1. [x] refactor package structure
 
-1. [ ] add a GenomeTensor ABC that provides genetic operators vectorized
-   over 2-dimensional populations (i.e. vectorized over multiple
-   populations, which is the current implementation)
+	- [x] remove the `Populations` class
 
-	- [ ] add an abstract crossover method
+	- [x] move pytorch utilities to `cgpv.torch`
 
-	- [ ] make the classical CGP implementation a concrete subclass of
-	the Genome ABC
-	
-	- [ ] add a concrete crossover method for the real-valued crossover
-	from GECCO '07
-	
-2. [ ] polish the package structure: only leave genetic operators,
-   selection operators and phenotype evaluation in `cgpv`; move the rest
-   to:
+    - [x] move selection operators to `cgpv.evo.selection`
 
-	- [ ] `cgpv.common`: general purpose utilities (seeded pytorch RNG,
-	symbolic regression losses, etc.)
-	
-	- TODO
+    - [x] move the classic cgp operators to `cgpv.cgp.classic`
+
+2. [ ] add an extensible and out-of-the-box implementation of classic
+   single-row CGP, such that the user can override the various steps
+   (reproduction, selection, etc.) to produce other CGP variants
+
+   - [ ] also, add tests that check for correctness by matching known
+     classic CGP performances (from another library, or from literature)
+
+3. [ ] add the store args decorator and use it in existing code
+
+4. [ ] add convenience functions that vectorize normal functions (or 
+   functions vectorized over single populations) over multiple
+   populations
 
 
-# 3: Finish the implementation of classical CGP
+# 3: Finish implementing basic CGP variants
 
-1. [x] implement single-row CGP with no levels back
+1. [ ] implement (single-row) vectorized real crossover from gecco 07
+   and a corresponding crossover-based reproduction operator for use in
+   the EA/ES interface
 
-2. [ ] implement multiple rows
+2. [ ] implement other relevant crossover operators (vectorized,
+   single-row) from CGP literature
 
-3. [ ] implement levels back parameter
+2. [ ] implement multiple rows and levels back parameter
 
 
 # 4: Major version release
@@ -121,9 +126,23 @@ changelog.
 
 	- TODO
 
+1. [ ] identify, minimize and document dev-host synchronization points,
+   e.g.:
+
+	- passing tensors to Number parameters (e.g. for arange's end)
+
+	- counting nonzero elements in tensors
+
+1. [ ] support any python callable for which all arguments are tensors
+   as a primitive (as of now, only callable with no keyword arguments
+   are supported)
+
 1. [ ] add minimal code examples, tutorials and user manual
 
 1. [ ] switch to hatchling as build system?
+
+1. [ ] consider putting `cgpv` in a `src` directory (see
+   https://blog.ionelmc.ro/2014/05/25/python-packaging/#the-structure%3E)
 
 1. [ ] benchmark the library on Colab (and other platforms?), both on
    GPU and CPU
@@ -165,3 +184,6 @@ changelog.
 
 - [ ] implement notable CGP variants (see the CGP bible and more recent
   stuff)
+
+- [ ] use a stable top-k algorithm for plus selection instead of stable
+  sorting (to improve complexity)

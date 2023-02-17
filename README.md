@@ -53,52 +53,11 @@ Unit tests are in the `tests` directory; to run all of them, one can run
 ## Usage
 
 An overview of the API is given below (also see
-[Documentation](#documentation)) Full symbolic regression examples are
+[Documentation](#documentation)). Full symbolic regression examples are
 also available in the `examples` directory, both as python scripts and
 as notebooks.
 
-The whole API is contained in the `cgpv` package. The vectorized CGP
-operations 
-are available either as simple functions, or as methods of the `Populations` 
-class; most users may find the latter more convenient.
-
-The following (vectorized) operations are available:
-
-- counting the number of (valid) alleles for each locus: `count_alleles`
-  (performed automatically when creating new `Populations` objects, if
-  `n_alleles` is not provided);
-
-- generation of multiple random populations: `random_populations` or
-  `Populations.random` (static method);
-
-- random mutation: `mutate` and `Populations.mutate`;
-
-- evaluating populations on a tensor input: `eval_populations` or simply
-  calling a `Populations` object (since it implements `__call__`);
-
-- roulette-wheel selection: `roulette_wheel` or
-  `Populations.roulette_wheel`;
-
-- plus-selection: `plus_selection` or `Populations.plus_selection`;
-
-### More on `Populations` objects
-
-`Populations` objects also provide a `fitnesses` tensor attribute for
-convenience, used to store fitness matrices for the populations. If set,
-this attribute is then used by the selection methods.
-
-To avoid doing a lot of things twice or copy the same tensors around too
-much, most methods that return new populations (including the `__init__`
-method) don't make any attempt to deepcopy the given objects, so the
-configuration attributes of different populations may point to the same
-objects/tensors. This is not a problem for intended use cases, but users
-should be aware of it; it also may change in the future.
-
-Seed parity between the methods of `Populations` and corresponding
-functions can be explicitely tested on CPU devices in the unit tests;
-note, however, that running on CUDA devices may break reproducibility
-anyway (see the [PyTorch documentation on
-reproducibility](https://pytorch.org/docs/stable/notes/randomness.html).
+TODO introduce the new API (with an example?)
 
 ## Documentation
 
