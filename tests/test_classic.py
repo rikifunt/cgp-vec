@@ -201,14 +201,12 @@ def test_regression_tensor_sanity() -> None:
 
     for i in range(n_steps):
 
-        W = 1 / fitnesses
-        assert not (torch.any(W.isnan() | W.isinf())), f"Degenerate weights at step {i}"
-
-        parents = selection.roulette_wheel(
+        parents, _ = selection.tournaments(
             items=genomes,
-            weights=W,
-            n_rounds=n_offspring,
-            normalize_weights=True,
+            scores=fitnesses,
+            n_tournaments=n_offspring,
+            tournament_size=pop_size // 2,
+            minimize=True,
             generator=rng,
         )
 

@@ -1,5 +1,8 @@
 untracked/
 
+# VS Code
+.vscode/
+
 # For macOS
 .DS_Store
 

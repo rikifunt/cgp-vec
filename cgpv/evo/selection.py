@@ -1,9 +1,96 @@
-from typing import Optional
+from typing import Optional, Tuple
 
 import torch
 
 
-# TODO for all selection functions also support returning indices and/or weights/scores/etc.
+def combinations(
+    items: torch.Tensor, # (N, M, P)
+    n_combinations: int, # T
+    k: int, # S
+    generator: Optional[torch.Generator] = None,
+) -> Tuple[torch.Tensor, torch.Tensor]: # (N, T, S, P) and (N, T, S)
+    """Extract multiple random combinations from a tensor of items.
+
+    Given a tensor of items of shape (N, M, P), with each item being a
+    vector of size P, extract n_combinations combinations, each of size
+    k, for each row of items.
+    
+    A tuple of 2 tensors is returned:
+    - the extracted combinations, of shape (N, n_combinations, k, P);
+    - the indices of the items extracted, of shape
+      (N, n_combinations, k).
+
+    In other words, the first tensor returned by this operation is a
+    tensor y such that y[i][j] is a sequence of k items from items[i],
+    extracted uniformly *without* replacement, for all j in
+    {0, ..., n_combinations}. The second tensor returned is a tensor z
+    such that z[i][j] contains the indices in {0, M} of the items
+    contained in y[i][j].
+    """
+    # "vectorized randperm", inspired by https://discuss.pytorch.org/t/what-is-the-most-efficient-way-to-shuffle-each-row-of-a-tensor-with-different-shuffling-order-for-each-of-the-row/109772
+    shuffled_indices = torch.argsort(
+        torch.rand(
+            [items.size(0), n_combinations, items.size(1)],
+            generator=generator,
+        ),
+        dim=2
+    ) # (N, T, M)
+    extracted_indices = shuffled_indices[..., :k] # (N, T, S)
+    extracted_items = torch.gather(
+        items.unsqueeze(1).expand(-1, extracted_indices.size(1), -1, -1), # (N, T, M, P)
+        dim=2,
+        index=extracted_indices.unsqueeze(3).expand(-1, -1, -1, items.size(2)) # (N, T, S, P)
+    ) # (N, T, S, P)
+    return extracted_items, extracted_indices
+
+
+def tournaments(
+    items: torch.Tensor, # (N, M, P)
+    scores: torch.Tensor, # (N, M)
+    n_tournaments: int, # T
+    tournament_size: int, # S
+    minimize: bool = False,
+    generator: Optional[torch.Generator] = None,
+) -> Tuple[torch.Tensor, torch.Tensor]: # (N, T, P) and (N, T)
+    """Perform multiple random tournaments among the given items.
+
+    Given a tensor of items of shape (N, M, P), perform n_tournaments of
+    size tournament_size using the given tensor of scores of shape
+    (N, M). A tuple of 2 tensor is returned:
+    - the winners, of shape (N, n_tournaments, P);
+    - the scores of the winners, of shape (N, n_tournaments).
+
+    Each tournament is performed by extracting tournament_size distinct
+    participants at random, and then comparing their scores to find the
+    winner. If minimize is False (default), the winner is the item with
+    the maximum score; otherwise, the winner is the item with the
+    minimum score.
+
+    In other words, the first tensor returned is a tensor y such that
+    y[i][j] is the winner of the (j+1)-th tournament performed on items
+    in items[i]. The second tensor
+    returned is a tensor z such that z[i][j] is the score of the winner
+    of the (j+1)-th tournament performed on items in items[i].
+    """
+    participants, participant_indices = combinations(
+        items=items,
+        n_combinations=n_tournaments,
+        k=tournament_size,
+        generator=generator
+    ) # (N, T, S, P) and (N, T, S)
+    participant_scores = torch.gather(
+        scores.unsqueeze(1).expand(-1, n_tournaments, -1),
+        dim=2,
+        index=participant_indices
+    ) # (N, T, S)
+    reduce = torch.max if not minimize else torch.min
+    winner_scores, winner_indices = reduce(participant_scores, dim=2) # (N, T) and (N, T)
+    winners = torch.gather(
+        participants,
+        dim=2,
+        index=winner_indices.unsqueeze(2).unsqueeze(2).expand(-1, -1, -1, participants.size(3)) # (N, T, 1, P)
+    ).squeeze(2) # (N, T, P)
+    return winners, winner_scores
 
 
 # assumes weights are positive and sum to 1 along rows
@@ -55,27 +142,6 @@ def roulette_wheel_columns(
     k = (s < r).sum(dim=1)
     # k has shape ( n_rounds, n_pops )
     return items[k, torch.arange(weights.size(1), device=device)]
-
-
-# this has no stability guarantee as it calls torch.topk
-def tournament(
-    n_winners: int,
-    items: torch.Tensor,
-    scores: torch.Tensor,
-    descending: bool = True,
-    return_scores: bool = False,
-):
-    device = items.device
-    best_scores, best_indices = torch.topk(
-        scores, k=n_winners, dim=1, largest=descending
-    )
-    rows = torch.arange(items.size(0), device=device)
-    rows = rows.reshape(-1, 1).tile(1, n_winners)
-    winners = items[rows, best_indices]
-    if return_scores:
-        return winners, best_scores
-    else:
-        return winners
 
 
 def plus_selection(
