@@ -144,7 +144,7 @@ def eval_primitives(
 ):
     input_size = inputs.size()[1:]
     device = inputs.device
-    output = torch.zeros([primitives.size(0), *input_size], device=device)
+    output = torch.zeros([primitives.size(0), *input_size], dtype=inputs.dtype, device=device)
     next_first_inputs = primitive_arities[primitives].cumsum(dim=0)
     for i, f in enumerate(primitive_functions):
         mask = primitives == i
