@@ -99,6 +99,8 @@ changelog.
    - [ ] also, add tests that check for correctness by matching known
      classic CGP performances (from another library, or from literature)
 
+3. [ ] support 0-arity primitives
+
 3. [ ] add the store args decorator and use it in existing code
 
 4. [ ] add convenience functions that vectorize normal functions (or 
