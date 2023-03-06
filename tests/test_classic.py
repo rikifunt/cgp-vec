@@ -1,9 +1,14 @@
+import json
+import numpy as np
+
 from pytest import mark
 import torch
 
 from cgpv.torch import seeded_generator
 import cgpv.cgp.classic as classic
 import cgpv.evo.selection as selection
+
+from tests.tar import Tar, np_load
 
 
 class Test_eval_populations:
@@ -245,3 +250,145 @@ def test_regression_tensor_sanity() -> None:
             offspring_fitnesses=offspring_fitnesses,
             descending=False,
         )
+
+
+@mark.slow
+def test_toy_baseline() -> None:
+    def mse(x, y):
+        reduced_dims = tuple(range(2, x.dim()))
+        return torch.mean((x - y) ** 2, dim=reduced_dims)
+
+    with Tar('tests/baselines/toy.tar') as baseline_tar:
+        baseline_parameters = baseline_tar.extract('parameters.json', json.load)
+        examples = baseline_tar.extract('examples.npy', np_load)
+        baseline_fitness_histories = baseline_tar.extract('fitness_history.npy', np_load)
+
+    primitive_map = {
+        'add': (lambda x: x[0] + x[1], 2),
+        'sub': (lambda x: x[0] - x[1], 2),
+        'mul': (lambda x: x[0] * x[1], 2),
+        # TODO how to check this from the TAR?
+        'const': (lambda x: torch.ones_like(x, dtype=torch.double), 1), # arity = 0 doesn't work for now
+    }
+
+    primitives = dict(primitive_map[p_str] for p_str in baseline_parameters['primitives'])
+
+    # "toy" target
+    target = lambda x: x[0] ** 2 + 1.0
+
+    loss = mse
+    assert baseline_parameters['objective'] == 'symbolic_regression_neg_mse_toy'
+    baseline_fitness_histories = -baseline_fitness_histories
+
+    rng: torch.Generator = seeded_generator(42)
+    device: torch.device = rng.device
+
+    baseline_fitness_histories = torch.tensor(baseline_fitness_histories, device=device)
+
+    input: torch.Tensor = torch.tensor(examples, device=device).expand(1, -1)
+    true_output: torch.Tensor = target(input)
+
+    n_populations: int = baseline_fitness_histories.size(0)
+    pop_size: int = baseline_parameters['n_parents']
+    tournament_size: int = baseline_parameters['tournament_size']
+    n_offspring: int = baseline_parameters['n_offsprings']
+    n_inputs: int = baseline_parameters['n_inputs']
+    n_outputs: int = baseline_parameters['n_outputs']
+    n_hidden: int = baseline_parameters['n_columns']
+    assert baseline_parameters['n_rows'] == 1
+    max_arity: int = max(primitives.values())
+    mutation_rate: float = baseline_parameters['mutation_rate']
+    # NOTE: assumed to be number of generations including the first one,
+    # so the number of evolutionary steps is actually n_generations - 1.
+    n_generations: int = baseline_fitness_histories.size(1)
+
+    arities = torch.tensor(tuple(primitives.values()), device=device)
+
+    fitness_histories = torch.full(
+        [n_populations, n_generations],
+        float('nan'),
+        dtype=baseline_fitness_histories.dtype,
+        device=device
+    )
+
+    n_alleles: torch.Tensor = classic.count_alleles(
+        n_inputs=n_inputs,
+        n_outputs=n_outputs,
+        n_hidden=n_hidden,
+        n_primitives=len(primitives),
+        max_arity=max_arity,
+        dtype=torch.long,
+    )
+
+    genomes: torch.Tensor = classic.random_populations(
+        n_populations=n_populations,
+        pop_size=pop_size,
+        n_alleles=n_alleles,
+        dtype=torch.long,
+        generator=rng,
+    )
+
+    outputs: torch.Tensor = classic.eval_populations(
+        input=input,
+        genomes=genomes,
+        primitive_arities=arities,
+        n_inputs=n_inputs,
+        n_outputs=n_outputs,
+        n_hidden=n_hidden,
+        primitive_functions=primitives,
+        max_arity=max_arity,
+    )
+
+    fitnesses = loss(outputs, true_output) # (n_populations, pop_size)
+
+    for i in range(n_generations - 1):
+        fitness_histories[:,i] = torch.max(fitnesses, dim=1)[0] # (n_populations,)
+
+        parents, _ = selection.tournaments(
+            items=genomes,
+            scores=fitnesses,
+            n_tournaments=n_offspring,
+            tournament_size=tournament_size,
+            minimize=True,
+            generator=rng,
+        )
+
+        offspring = classic.mutate(
+            genomes=parents,
+            rate=mutation_rate,
+            n_alleles=n_alleles,
+            generator=rng,
+        )
+
+        offspring_outputs = classic.eval_populations(
+            input=input,
+            genomes=offspring,
+            primitive_arities=arities,
+            n_inputs=n_inputs,
+            n_outputs=n_outputs,
+            n_hidden=n_hidden,
+            primitive_functions=primitives,
+            max_arity=max_arity,
+        )
+
+        offspring_fitnesses = loss(offspring_outputs, true_output)
+
+        genomes, fitnesses = selection.plus_selection(
+            genomes=genomes,
+            fitnesses=fitnesses,
+            offspring=offspring,
+            offspring_fitnesses=offspring_fitnesses,
+            descending=False,
+        )
+
+    fitness_histories[:,n_generations-1] = torch.max(fitnesses, dim=1)[0] # (n_populations,)
+
+    np.save('fitness_histories.npy', fitness_histories.numpy())
+
+    baseline_avgs = torch.mean(baseline_fitness_histories, dim=0)
+    avgs = torch.mean(fitness_histories, dim=0)
+
+    # TODO use hypothesis checking theory for this
+    # TODO this fails anyway, hal-cgp seems to perform a little better,
+    #      need to look into it (performance is similar anyway)
+    assert torch.all((baseline_avgs - avgs)[2:].abs() < 10)

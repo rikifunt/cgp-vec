@@ -1,0 +1,3 @@
+numpy==1.21.6
+hal-cgp==0.3.0
+matplotlib==3.5.3
