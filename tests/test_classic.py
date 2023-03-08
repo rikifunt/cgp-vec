@@ -2,7 +2,7 @@ from pytest import mark
 import torch
 
 from cgpv.torch import seeded_generator
-import cgpv.cgp.classic as classic
+import cgpv.classic as classic
 import cgpv.evo.selection as selection
 
 
