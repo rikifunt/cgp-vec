@@ -121,12 +121,14 @@ The workflow of a typical commit is:
 - write self-explanatory code whenever possible, so that there is no
   need to comment it
 
-- only comment code for two reasons:
+- only comment code for these reasons:
 	
 	- explaining some non-self-explanatory piece of code
 	
 	- outlining the structure of a big function or class with "header"
 	comments
+
+	- "TODO" and similar comments :P
 
 
 # Unit testing

@@ -4,17 +4,17 @@ import torch
 
 
 def combinations(
-    items: torch.Tensor, # (N, M, P)
-    n_combinations: int, # T
-    k: int, # S
+    items: torch.Tensor,  # (N, M, P)
+    n_combinations: int,  # T
+    k: int,  # S
     generator: Optional[torch.Generator] = None,
-) -> Tuple[torch.Tensor, torch.Tensor]: # (N, T, S, P) and (N, T, S)
+) -> Tuple[torch.Tensor, torch.Tensor]:  # (N, T, S, P) and (N, T, S)
     """Extract multiple random combinations from a tensor of items.
 
     Given a tensor of items of shape (N, M, P), with each item being a
     vector of size P, extract n_combinations combinations, each of size
     k, for each row of items.
-    
+
     A tuple of 2 tensors is returned:
     - the extracted combinations, of shape (N, n_combinations, k, P);
     - the indices of the items extracted, of shape
@@ -33,25 +33,29 @@ def combinations(
             [items.size(0), n_combinations, items.size(1)],
             generator=generator,
         ),
-        dim=2
-    ) # (N, T, M)
-    extracted_indices = shuffled_indices[..., :k] # (N, T, S)
-    extracted_items = torch.gather(
-        items.unsqueeze(1).expand(-1, extracted_indices.size(1), -1, -1), # (N, T, M, P)
         dim=2,
-        index=extracted_indices.unsqueeze(3).expand(-1, -1, -1, items.size(2)) # (N, T, S, P)
-    ) # (N, T, S, P)
+    )  # (N, T, M)
+    extracted_indices = shuffled_indices[..., :k]  # (N, T, S)
+    extracted_items = torch.gather(
+        items.unsqueeze(1).expand(
+            -1, extracted_indices.size(1), -1, -1
+        ),  # (N, T, M, P)
+        dim=2,
+        index=extracted_indices.unsqueeze(3).expand(
+            -1, -1, -1, items.size(2)
+        ),  # (N, T, S, P)
+    )  # (N, T, S, P)
     return extracted_items, extracted_indices
 
 
 def tournaments(
-    items: torch.Tensor, # (N, M, P)
-    scores: torch.Tensor, # (N, M)
-    n_tournaments: int, # T
-    tournament_size: int, # S
+    items: torch.Tensor,  # (N, M, P)
+    scores: torch.Tensor,  # (N, M)
+    n_tournaments: int,  # T
+    tournament_size: int,  # S
     minimize: bool = False,
     generator: Optional[torch.Generator] = None,
-) -> Tuple[torch.Tensor, torch.Tensor]: # (N, T, P) and (N, T)
+) -> Tuple[torch.Tensor, torch.Tensor]:  # (N, T, P) and (N, T)
     """Perform multiple random tournaments among the given items.
 
     Given a tensor of items of shape (N, M, P), perform n_tournaments of
@@ -76,20 +80,26 @@ def tournaments(
         items=items,
         n_combinations=n_tournaments,
         k=tournament_size,
-        generator=generator
-    ) # (N, T, S, P) and (N, T, S)
+        generator=generator,
+    )  # (N, T, S, P) and (N, T, S)
     participant_scores = torch.gather(
         scores.unsqueeze(1).expand(-1, n_tournaments, -1),
         dim=2,
-        index=participant_indices
-    ) # (N, T, S)
+        index=participant_indices,
+    )  # (N, T, S)
     reduce = torch.max if not minimize else torch.min
-    winner_scores, winner_indices = reduce(participant_scores, dim=2) # (N, T) and (N, T)
+    winner_scores, winner_indices = reduce(
+        participant_scores, dim=2
+    )  # (N, T) and (N, T)
     winners = torch.gather(
         participants,
         dim=2,
-        index=winner_indices.unsqueeze(2).unsqueeze(2).expand(-1, -1, -1, participants.size(3)) # (N, T, 1, P)
-    ).squeeze(2) # (N, T, P)
+        index=winner_indices.unsqueeze(2)
+        .unsqueeze(2)
+        .expand(-1, -1, -1, participants.size(3)),  # (N, T, 1, P)
+    ).squeeze(
+        2
+    )  # (N, T, P)
     return winners, winner_scores
 
 

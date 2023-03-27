@@ -96,7 +96,14 @@ changelog.
    single-row CGP, such that the user can override the various steps
    (reproduction, selection, etc.) to produce other CGP variants
 
-   - [ ] also, add tests that check for correctness by matching known
+   - [x] add a CGP class that also stores intermediate tensors
+     (offspring, offspring fitnesses, etc.)
+
+   - [ ] split the run method of the CGP class into several methods
+     that can be overridden in child classes to modify the corresponding
+	 operators (mutation, selection, etc.)
+
+   - [ ] add tests that check for correctness by matching known
      classic CGP performances (from another library, or from literature)
 
 3. [ ] support 0-arity primitives

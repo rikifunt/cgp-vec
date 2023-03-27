@@ -1,11 +1,38 @@
-from typing import Optional, Union, Iterable, Callable
+from typing import Dict, Optional, Tuple, Union, Iterable, Callable
 
 import torch
 
 from cgpv.torch import aranges, randints, random_mask_like
+import cgpv.evo.selection as selection
 
 
 Primitive = Callable[[torch.Tensor], torch.Tensor]
+Phenotype = Callable[[torch.Tensor], torch.Tensor]
+Fitness = Callable[[Phenotype], torch.Tensor]
+
+
+def phenotypes(
+    genomes: torch.Tensor,
+    n_inputs: int,
+    n_outputs: int,
+    n_hidden: int,
+    primitives: Iterable[Primitive],
+    arities: torch.Tensor,
+    max_arity: Union[int, torch.Tensor, None] = None,
+) -> Phenotype:
+    def phi(input):
+        return eval_populations(
+            input=input,
+            genomes=genomes,
+            primitive_arities=arities,
+            n_inputs=n_inputs,
+            n_outputs=n_outputs,
+            n_hidden=n_hidden,
+            primitive_functions=primitives,
+            max_arity=max_arity,
+        )
+
+    return phi
 
 
 # TODO solve the problem of common arithmetic giving NaN results, e.g.
@@ -144,7 +171,9 @@ def eval_primitives(
 ):
     input_size = inputs.size()[1:]
     device = inputs.device
-    output = torch.zeros([primitives.size(0), *input_size], dtype=inputs.dtype, device=device)
+    output = torch.zeros(
+        [primitives.size(0), *input_size], dtype=inputs.dtype, device=device
+    )
     next_first_inputs = primitive_arities[primitives].cumsum(dim=0)
     for i, f in enumerate(primitive_functions):
         mask = primitives == i
@@ -238,7 +267,6 @@ def mutate(
     in_place: bool = False,
 ) -> torch.Tensor:
     """TODO document the mutate function"""
-
     loci = random_mask_like(
         genomes, rate=rate, generator=generator, device=n_alleles.device
     )
@@ -254,3 +282,107 @@ def mutate(
         mutated_dnas = genomes.clone()
         mutated_dnas[loci] = mutated_genes
         return mutated_dnas
+
+
+class Cgp:
+    def __init__(
+        self,
+        fitness: Fitness,
+        primitives: Dict[Primitive, int],
+        n_inputs: int,
+        n_outputs: int,
+        n_hidden: int,
+        n_populations: int,
+        pop_size: int,
+        n_offspring: int,
+        mutation_rate: float,
+        dtype: Optional[torch.dtype] = None,
+        device: Optional[torch.device] = None,
+    ) -> None:
+        self.fitness = fitness
+        self.primitives = primitives.copy()
+        self.n_inputs = n_inputs
+        self.n_outputs = n_outputs
+        self.n_hidden = n_hidden
+        self.n_populations = n_populations
+        self.pop_size = pop_size
+        self.n_offspring = n_offspring
+        self.mutation_rate = mutation_rate
+        self.dtype = dtype
+        self.device = device
+        # TODO do we have constraints on dtype of primitives?
+        self.arities = torch.tensor(tuple(primitives.values()), device=device)
+        self.max_arity: int = max(self.primitives.values())
+        self.n_alleles: torch.Tensor = count_alleles(
+            n_inputs=self.n_inputs,
+            n_outputs=self.n_outputs,
+            n_hidden=self.n_hidden,
+            n_primitives=len(self.primitives),
+            max_arity=self.max_arity,
+            dtype=self.dtype,
+        )
+
+    # TODO make genomes, fitnesses, etc. be read-only
+    def run(
+        self,
+        generations: int,
+        generator: Optional[torch.Generator] = None,
+        force_reset: bool = False,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        if force_reset or not hasattr(self, "genomes"):
+            self.genomes: torch.Tensor = random_populations(
+                n_populations=self.n_populations,
+                pop_size=self.pop_size,
+                n_alleles=self.n_alleles,
+                dtype=self.dtype,
+                generator=generator,
+            )
+            # The first generation counts.
+            generations -= 1
+            self.phenotypes = phenotypes(
+                genomes=self.genomes,
+                n_inputs=self.n_inputs,
+                n_outputs=self.n_outputs,
+                n_hidden=self.n_hidden,
+                primitives=tuple(self.primitives.keys()),
+                arities=self.arities,
+            )
+            self.fitnesses = self.fitness(self.phenotypes)
+
+        for _ in range(generations):
+
+            self.parents, _ = selection.tournaments(
+                items=self.genomes,
+                scores=self.fitnesses,
+                n_tournaments=self.n_offspring,
+                tournament_size=self.pop_size // 2,
+                minimize=True,
+                generator=generator,
+            )
+
+            self.offspring = mutate(
+                genomes=self.parents,
+                rate=self.mutation_rate,
+                n_alleles=self.n_alleles,
+                generator=generator,
+            )
+
+            self.offspring_phenotypes = phenotypes(
+                genomes=self.offspring,
+                n_inputs=self.n_inputs,
+                n_outputs=self.n_outputs,
+                n_hidden=self.n_hidden,
+                primitives=tuple(self.primitives.keys()),
+                arities=self.arities,
+            )
+            self.offspring_fitnesses = self.fitness(self.offspring_phenotypes)
+
+            self.genomes, self.fitnesses = selection.plus_selection(
+                genomes=self.genomes,
+                fitnesses=self.fitnesses,
+                offspring=self.offspring,
+                offspring_fitnesses=self.offspring_fitnesses,
+                descending=False,
+            )
+
+        return self.genomes, self.fitnesses
