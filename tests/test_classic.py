@@ -261,6 +261,7 @@ def test_regression_api_parity() -> None:
         lambda x: x[0] / x[1]: 2,
     }
     target = lambda x: x[0] ** 6 - 2 * x[0] ** 4 + x[0] ** 2
+    minimize = True
 
     seed: int = 42
     rng: torch.Generator = seeded_generator(seed)
@@ -274,6 +275,7 @@ def test_regression_api_parity() -> None:
     n_populations: int = 5
     pop_size: int = 50
     n_offspring: int = 48
+    tournament_size: int = pop_size // 2
     n_inputs: int = 1
     n_outputs: int = 1
     n_hidden: int = 10
@@ -285,6 +287,7 @@ def test_regression_api_parity() -> None:
 
     cgp = classic.Cgp(
         fitness=loss_fitness,
+        minimize=True,
         primitives=primitives,
         n_inputs=n_inputs,
         n_outputs=n_outputs,
@@ -292,6 +295,7 @@ def test_regression_api_parity() -> None:
         n_populations=n_populations,
         pop_size=pop_size,
         n_offspring=n_offspring,
+        tournament_size=tournament_size,
         mutation_rate=mutation_rate,
         device=device,
         dtype=dtype,
@@ -344,8 +348,8 @@ def test_regression_api_parity() -> None:
             items=genomes,
             scores=fitnesses,
             n_tournaments=n_offspring,
-            tournament_size=pop_size // 2,
-            minimize=True,
+            tournament_size=tournament_size,
+            minimize=minimize,
             generator=test_rng,
         )
 
@@ -374,7 +378,7 @@ def test_regression_api_parity() -> None:
             fitnesses=fitnesses,
             offspring=offspring,
             offspring_fitnesses=offspring_fitnesses,
-            descending=False,
+            descending=not minimize,
         )
 
         cgp.run(generations=1, generator=rng)

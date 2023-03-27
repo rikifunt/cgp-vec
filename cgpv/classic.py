@@ -288,6 +288,7 @@ class Cgp:
     def __init__(
         self,
         fitness: Fitness,
+        minimize: bool,
         primitives: Dict[Primitive, int],
         n_inputs: int,
         n_outputs: int,
@@ -295,11 +296,13 @@ class Cgp:
         n_populations: int,
         pop_size: int,
         n_offspring: int,
+        tournament_size: int,
         mutation_rate: float,
         dtype: Optional[torch.dtype] = None,
         device: Optional[torch.device] = None,
     ) -> None:
         self.fitness = fitness
+        self.minimize = minimize
         self.primitives = primitives.copy()
         self.n_inputs = n_inputs
         self.n_outputs = n_outputs
@@ -307,6 +310,7 @@ class Cgp:
         self.n_populations = n_populations
         self.pop_size = pop_size
         self.n_offspring = n_offspring
+        self.tournament_size = tournament_size
         self.mutation_rate = mutation_rate
         self.dtype = dtype
         self.device = device
@@ -322,7 +326,82 @@ class Cgp:
             dtype=self.dtype,
         )
 
+    def genesis(self, generator: Optional[torch.Generator] = None) -> torch.Tensor:
+        return random_populations(
+            n_populations=self.n_populations,
+            pop_size=self.pop_size,
+            n_alleles=self.n_alleles,
+            dtype=self.dtype,
+            generator=generator,
+        )
+
+    def phenotype(self, genomes: torch.Tensor) -> Phenotype:
+        return phenotypes(
+            genomes=genomes,
+            n_inputs=self.n_inputs,
+            n_outputs=self.n_outputs,
+            n_hidden=self.n_hidden,
+            primitives=tuple(self.primitives.keys()),
+            arities=self.arities,
+        )
+
+    def parent_selection(
+        self,
+        genomes: torch.Tensor,
+        fitnesses: torch.Tensor,
+        generator: Optional[torch.Generator] = None,
+    ) -> torch.Tensor:
+        return selection.tournaments(
+            items=genomes,
+            scores=fitnesses,
+            n_tournaments=self.n_offspring,
+            tournament_size=self.tournament_size,
+            minimize=self.minimize,
+            generator=generator,
+        )[0]
+
+    def mutation(
+        self, genomes: torch.Tensor, generator: Optional[torch.Generator] = None
+    ) -> torch.Tensor:
+        return mutate(
+            genomes=genomes,
+            rate=self.mutation_rate,
+            n_alleles=self.n_alleles,
+            generator=generator,
+        )
+
+    # uses parent_selection and mutation methods
+    def reproduction(
+        self,
+        genomes: torch.Tensor,
+        fitnesses: torch.Tensor,
+        generator: Optional[torch.Generator] = None,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        parents = self.parent_selection(
+            genomes=genomes, fitnesses=fitnesses, generator=generator
+        )
+        offspring = self.mutation(genomes=parents, generator=generator)
+        return parents, offspring
+
+    def selection(
+        self,
+        genomes: torch.Tensor,
+        offspring: torch.Tensor,
+        fitnesses: torch.Tensor,
+        offspring_fitnesses: torch.Tensor,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        return selection.plus_selection(
+            genomes=genomes,
+            fitnesses=fitnesses,
+            offspring=offspring,
+            offspring_fitnesses=offspring_fitnesses,
+            descending=not self.minimize,
+        )
+
     # TODO make genomes, fitnesses, etc. be read-only
+    # TODO take out this method into a new class that holds only the
+    # state of the algo (genomes, fitnesses, etc.) so that this class
+    # can be made fully functional
     def run(
         self,
         generations: int,
@@ -330,59 +409,25 @@ class Cgp:
         force_reset: bool = False,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         if force_reset or not hasattr(self, "genomes"):
-            self.genomes: torch.Tensor = random_populations(
-                n_populations=self.n_populations,
-                pop_size=self.pop_size,
-                n_alleles=self.n_alleles,
-                dtype=self.dtype,
-                generator=generator,
-            )
+            self.genomes: torch.Tensor = self.genesis(generator=generator)
             # The first generation counts.
             generations -= 1
-            self.phenotypes = phenotypes(
-                genomes=self.genomes,
-                n_inputs=self.n_inputs,
-                n_outputs=self.n_outputs,
-                n_hidden=self.n_hidden,
-                primitives=tuple(self.primitives.keys()),
-                arities=self.arities,
-            )
+            self.phenotypes = self.phenotype(self.genomes)
             self.fitnesses = self.fitness(self.phenotypes)
 
         for _ in range(generations):
-
-            self.parents, _ = selection.tournaments(
-                items=self.genomes,
-                scores=self.fitnesses,
-                n_tournaments=self.n_offspring,
-                tournament_size=self.pop_size // 2,
-                minimize=True,
-                generator=generator,
+            self.parents, self.offspring = self.reproduction(
+                genomes=self.genomes, fitnesses=self.fitnesses, generator=generator
             )
 
-            self.offspring = mutate(
-                genomes=self.parents,
-                rate=self.mutation_rate,
-                n_alleles=self.n_alleles,
-                generator=generator,
-            )
-
-            self.offspring_phenotypes = phenotypes(
-                genomes=self.offspring,
-                n_inputs=self.n_inputs,
-                n_outputs=self.n_outputs,
-                n_hidden=self.n_hidden,
-                primitives=tuple(self.primitives.keys()),
-                arities=self.arities,
-            )
+            self.offspring_phenotypes = self.phenotype(self.offspring)
             self.offspring_fitnesses = self.fitness(self.offspring_phenotypes)
 
-            self.genomes, self.fitnesses = selection.plus_selection(
-                genomes=self.genomes,
-                fitnesses=self.fitnesses,
-                offspring=self.offspring,
-                offspring_fitnesses=self.offspring_fitnesses,
-                descending=False,
+            self.genomes, self.fitnesses = self.selection(
+                self.genomes,
+                self.offspring,
+                self.fitnesses,
+                self.offspring_fitnesses,
             )
 
         return self.genomes, self.fitnesses

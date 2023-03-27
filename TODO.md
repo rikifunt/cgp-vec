@@ -99,12 +99,17 @@ changelog.
    - [x] add a CGP class that also stores intermediate tensors
      (offspring, offspring fitnesses, etc.)
 
-   - [ ] split the run method of the CGP class into several methods
+   - [x] split the run method of the CGP class into several methods
      that can be overridden in child classes to modify the corresponding
 	 operators (mutation, selection, etc.)
 
    - [ ] add tests that check for correctness by matching known
      classic CGP performances (from another library, or from literature)
+
+   - [ ] separate the classic CGP class into two classes, one holding
+     the stateless operators (to be overridden by subclasses), and one
+	 holding algo state and intermediate stuff, which uses any instance
+	 of the stateless class
 
 3. [ ] support 0-arity primitives
 
